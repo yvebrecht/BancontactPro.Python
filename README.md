@@ -57,7 +57,7 @@ else:
     handle(callback.payload.status, callback.request_id)  # request_id (jti) is uniek per bericht
 ```
 
-Antwoord pas met `200` na verificatie en verwerking. Bancontact herhaalt callbacks met identieke inhoud, dus verwerk idempotent (zie ook BancontactPro.Net#50).
+Antwoord pas met `200` na verificatie en verwerking. Bancontact herhaalt callbacks met identieke inhoud, dus verwerk idempotent (zie ook BancontactPro.Net#9).
 
 ## Terugbetalingen en reconciliatie
 

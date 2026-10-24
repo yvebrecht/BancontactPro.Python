@@ -46,7 +46,7 @@ def resolve(spec: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
 
 
 # (spec, schema, model class, spec properties deliberately not modelled)
-# totalAmount: listed as required but never defined (BancontactPro.Net#28). voucherEligibility: deprecated.
+# totalAmount: listed as required but never defined (BancontactPro.Net#4). voucherEligibility: deprecated.
 MODELS: list[tuple[str, str, type, set[str]]] = [
     ("merchant-payment", "payment_create_request", models.CreatePaymentRequest, {"voucherEligibility"}),
     ("merchant-payment", "static_qr_payment_create_request", models.CreateStaticQrPaymentRequest, {"voucherEligibility"}),

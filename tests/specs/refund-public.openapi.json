@@ -1,0 +1,441 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "version": "3.0.3",
+    "title": "Payment Refund Service API",
+    "description": "API allows merchant/integrator to create/get/search payment refunds.\n\n## History\n\n### 3.0.3 (2025-10-01)\n\n* Removed DEV and ACC environment.\n* Added description for PREPROD and PROD environments\n* Added `/v3` prefixes to operation paths.\n\n### 3.0.2 (2025-07-28)\n\n* Removed `PROCESSING` status from the refund status.\n* Removed `DEBTOR_IBAN_NOT_AVAILABLE` error code from the refund creation endpoint.\n"
+  },
+  "servers": [
+    {
+      "url": "https://merchant.api.preprod.bancontact.net",
+      "description": "PREPROD merchant API"
+    },
+    {
+      "url": "https://merchant.api.bancontact.net",
+      "description": "PROD merchant API"
+    }
+  ],
+  "paths": {
+    "/v3/payments/{payment-id}/refunds": {
+      "post": {
+        "summary": "Create refund for payment",
+        "description": "Endpoint to initiate refund of Bancontact Company payment to the debtor.\nThis endpoint is idempotent based on 'Idempotency-Key' header. So the same request can be safely retried in case of timeout/network issue.\n",
+        "operationId": "createRefund",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentId"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency-Key"
+          }
+        ],
+        "security": [
+          {
+            "JWS-Request-Signature-Refund": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Refund successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundCreationResponse"
+                }
+              }
+            },
+            "headers": {
+              "SignatureBank": {
+                "$ref": "#/components/headers/SignatureBank"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400InputError"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/403Forbidden"
+          },
+          "422": {
+            "description": "Refund creation failed for business reasons. Error codes:\n* _PAYMENT_FOR_REFUND_NOT_FOUND_ - payment not found\n* _INVALID_REFUND_AMOUNT_ - refund amount is too high\n* _REFUND_NOT_ALLOWED_ - refund is not allowed for the merchant\n* _REFUND_NOT_POSSIBLE_ - refund is not possible for this payment at the moment\n* _REFUND_REQUEST_CONFLICT_ - request id is already used by refund with different parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "SignatureBank": {
+                "$ref": "#/components/headers/SignatureBank"
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/payments/{payment-id}/refunds/{refund-id}": {
+      "get": {
+        "summary": "get refund by id",
+        "description": "Endpoint to get refund details by id.\n",
+        "operationId": "getRefundById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentId"
+          },
+          {
+            "$ref": "#/components/parameters/RefundId"
+          }
+        ],
+        "security": [
+          {
+            "JWS-Request-Signature-Refund": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "return refund details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundModel"
+                }
+              }
+            },
+            "headers": {
+              "SignatureBank": {
+                "$ref": "#/components/headers/SignatureBank"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400InputError"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/403Forbidden"
+          },
+          "404": {
+            "description": "Error codes:\n* _REFUND_NOT_FOUND_ - refund not found\n* _PAYMENT_NOT_FOUND_ - payment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "SignatureBank": {
+                "$ref": "#/components/headers/SignatureBank"
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "JWS-Request-Signature-Refund": {
+        "name": "Signature",
+        "type": "apiKey",
+        "in": "header",
+        "description": "[Detached JWS signature of request payload](https://tools.ietf.org/html/rfc7797).\n\nMerchant/Partner MUST host the public key in [JWK format](https://tools.ietf.org/html/rfc7517) as [JWKS](https://tools.ietf.org/html/rfc7517#section-3)\nand share the URL with Bancontact Company during integration.\n\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"ES256\",\n      \"https://payconiq.com/sub\" : \"{merchantProfileId}\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{Unique-request-identifier}\",\n      \"https://payconiq.com/path\": \"request path ex. /v3/payments/{payment-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload MUST be the same as response body as base64url encoded JSON data."
+      }
+    },
+    "parameters": {
+      "PaymentId": {
+        "in": "path",
+        "name": "payment-id",
+        "description": "Payment Id",
+        "schema": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "required": true
+      },
+      "RefundId": {
+        "in": "path",
+        "name": "refund-id",
+        "description": "Refund Id",
+        "schema": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "required": true
+      },
+      "Idempotency-Key": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "description": "Unique request identifier with a maximum of 64 characters (we recommend UUID). It will be used for idempotency check.",
+        "schema": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "required": true
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "title": "Error response",
+        "description": "The standard response model returned in case of an error",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "CreateRefundRequest": {
+        "type": "object",
+        "description": "request with refund details to create",
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Amount"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "description": {
+            "type": "string",
+            "description": "refund description"
+          }
+        }
+      },
+      "RefundCreationResponse": {
+        "type": "object",
+        "description": "refund creation response object",
+        "required": [
+          "refundId",
+          "paymentId",
+          "amount",
+          "currency",
+          "status",
+          "creationDate"
+        ],
+        "properties": {
+          "refundId": {
+            "$ref": "#/components/schemas/RefundId"
+          },
+          "paymentId": {
+            "$ref": "#/components/schemas/PaymentId"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING"
+            ],
+            "description": "Refund status after creation. Always has value 'PENDING', because refund processing is asynchronous.\nCurrent status can be checked using GET '/v3/payments/{payment-id}/refunds/{refund-id}' endpoint."
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Amount"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "description": {
+            "$ref": "#/components/schemas/RefundDescription"
+          },
+          "creationDate": {
+            "$ref": "#/components/schemas/RefundCreationDate"
+          }
+        }
+      },
+      "RefundModel": {
+        "type": "object",
+        "description": "refund details",
+        "required": [
+          "refundId",
+          "paymentId",
+          "amount",
+          "currency",
+          "status",
+          "creationDate"
+        ],
+        "properties": {
+          "refundId": {
+            "$ref": "#/components/schemas/RefundId"
+          },
+          "paymentId": {
+            "$ref": "#/components/schemas/PaymentId"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Amount"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RefundStatus"
+          },
+          "description": {
+            "$ref": "#/components/schemas/RefundDescription"
+          },
+          "creationDate": {
+            "$ref": "#/components/schemas/RefundCreationDate"
+          }
+        }
+      },
+      "RefundId": {
+        "type": "string",
+        "description": "refund identifier",
+        "minLength": 24,
+        "maxLength": 24
+      },
+      "PaymentId": {
+        "type": "string",
+        "description": "payment identifier",
+        "minLength": 24,
+        "maxLength": 24
+      },
+      "Amount": {
+        "type": "integer",
+        "description": "Amount in cents",
+        "format": "int64",
+        "minimum": 1,
+        "exclusiveMinimum": 1,
+        "maximum": 999999999999
+      },
+      "Currency": {
+        "type": "string",
+        "enum": [
+          "EUR"
+        ],
+        "default": "EUR",
+        "description": "currency code. Only EUR is supported [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)"
+      },
+      "RefundStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "REFUNDED",
+          "FAILED"
+        ],
+        "description": "* _PENDING_ - refund request accepted by Bancontact Company, will be processed soon\n* _REFUNDED_ - refund request successfully processed and money moved from merchant to debtor\n* _FAILED_ - refund request processing failed for technical reasons, money movement didn't happen"
+      },
+      "RefundCreationDate": {
+        "type": "string",
+        "format": "date-time",
+        "description": "timestamp, when refund was created"
+      },
+      "RefundDescription": {
+        "type": "string",
+        "description": "refund description"
+      }
+    },
+    "responses": {
+      "400InputError": {
+        "description": "Error codes:\n* _VALIDATION_ERROR_ - request validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "SignatureBank": {
+            "$ref": "#/components/headers/SignatureBank"
+          }
+        }
+      },
+      "401Unauthorized": {
+        "description": "If JWS signature is not valid. Error codes:\n* _UNAUTHORIZED_ - caller doesn't have valid authentication credentials",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "SignatureBank": {
+            "$ref": "#/components/headers/SignatureBank"
+          }
+        }
+      },
+      "403Forbidden": {
+        "description": "Error codes:\n* _ACCESS_DENIED_ - operation not allowed, caller doesn't have required authorities",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "SignatureBank": {
+            "$ref": "#/components/headers/SignatureBank"
+          }
+        }
+      },
+      "500InternalServerError": {
+        "description": "Error codes:\n* _TECHNICAL_ERROR_ - technical error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "SignatureBank": {
+            "$ref": "#/components/headers/SignatureBank"
+          }
+        }
+      },
+      "503ServiceUnavailable": {
+        "description": "Service is unavailable"
+      }
+    },
+    "headers": {
+      "SignatureBank": {
+        "description": "[Detached JWS signature of response payload](https://tools.ietf.org/html/rfc7797).\nBancontact Company hosts the Public Key in [JWK format](https://tools.ietf.org/html/rfc7517) as [JWKS](https://tools.ietf.org/html/rfc7517#section-3) at:\n- https://jwks.bancontact.net/\n- https://jwks.preprod.bancontact.net/\nfor PROD and PREPROD environments respectively.\nThe Public Key should be downloaded from these URLs and identified by the 'kid' claim in the JOSE header.\nBancontact Company will use the same algorithm to sign the response as the one used for the request signature.\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"[ES256(ECDSA using P-256 and SHA-256. Minimum keysize 256 bit) or RS256(RSASSA-PKCS1-v1_5usingSHA-256 Minimum key length 2048 bit)](https://tools.ietf.org/html/rfc7518#section-3.1)\",\n      \"https://payconiq.com/sub\" : \"{bankUserId}\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{X-Request-ID}\",\n      \"https://payconiq.com/path\": \"request path eg. /bag/v1/payments/{payment-id}/authorization/{authorization-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload MUST be the same as response body as base64url encoded JSON data.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

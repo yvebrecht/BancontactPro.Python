@@ -1,0 +1,719 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "version": "3.0.1",
+    "title": "Merchant Reconciliation API",
+    "description": "API allows merchant/integrator to reconcile Payments\n\n## History\n\n### 3.0.1 (2025-10-01)\n\n* Removed DEV and ACC environment.\n* Added description for PREPROD and PROD environments\n* Added `/v3` prefixes to operation paths.\n\n### (2025-07-24)\n* Remove SubmerchantName and SubmerchantID.\n"
+  },
+  "servers": [
+    {
+      "url": "https://merchant.api.preprod.bancontact.net",
+      "description": "PREPROD merchant API"
+    },
+    {
+      "url": "https://merchant.api.bancontact.net",
+      "description": "PROD merchant API"
+    }
+  ],
+  "paths": {
+    "/v3/reconciliation/payouts": {
+      "get": {
+        "summary": "Get a list of all payouts for the merchant",
+        "description": "This API is used to indicate if there are payouts available after a payout run.\nIf there are no payouts for any reason, API will indicate it in the response by returning an empty list..",
+        "operationId": "getPayoutList",
+        "tags": [
+          "payoutList"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/size"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/date"
+          }
+        ],
+        "security": [
+          {
+            "JWS-Request-Signature": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payouts List Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutListResponse"
+                }
+              }
+            },
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/Signature"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401UnauthorizedReconciliation"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ForbiddenReconciliation"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerErrorReconciliation"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/reconciliation/payments": {
+      "get": {
+        "summary": "get list of payments",
+        "description": "Endpoint to get list of payments\n",
+        "operationId": "getPayments",
+        "tags": [
+          "payoutPayments"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PayoutId"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/startDate"
+          },
+          {
+            "$ref": "#/components/parameters/endDate"
+          }
+        ],
+        "security": [
+          {
+            "JWS-Request-Signature": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "returns all the payments for this payout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutPaymentsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/Signature"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401UnauthorizedReconciliation"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ForbiddenReconciliation"
+          },
+          "404": {
+            "description": "Error codes:\n* _PAYOUT_NOT_FOUND_ - payout with the id not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/Signature"
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerErrorReconciliation"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/reconciliation/refunds": {
+      "get": {
+        "summary": "get list of refunds",
+        "description": "Endpoint to get list of refunds.\n",
+        "operationId": "getRefunds",
+        "tags": [
+          "payoutRefunds"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PayoutId"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/startDate"
+          },
+          {
+            "$ref": "#/components/parameters/endDate"
+          }
+        ],
+        "security": [
+          {
+            "JWS-Request-Signature": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "returns all the refunds for this payout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutRefundsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/Signature"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401UnauthorizedReconciliation"
+          },
+          "403": {
+            "$ref": "#/components/responses/403ForbiddenReconciliation"
+          },
+          "404": {
+            "description": "Error codes:\n* _PAYOUT_NOT_FOUND_ - payout with the id not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/Signature"
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerErrorReconciliation"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "JWS-Request-Signature": {
+        "name": "Signature",
+        "type": "apiKey",
+        "in": "header",
+        "description": "[Detached JWS signature of request payload](https://tools.ietf.org/html/rfc7797).\n\nMerchant/Partner MUST host the public key in [JWK format](https://tools.ietf.org/html/rfc7517) as [JWKS](https://tools.ietf.org/html/rfc7517#section-3)\nand share the URL with Bancontact Payconiq Company during integration.\n\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"ES256\",\n      \"https://payconiq.com/sub\" : \"{merchantProfileId}\",\n      \"https://payconiq.com/iss\" : \"{Merchant Id}\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{Unique-request-identifier}\",\n      \"https://payconiq.com/path\": \"request path ex. /v3/payments/{payment-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload MUST be the same as request body as base64url encoded JSON data."
+      }
+    },
+    "parameters": {
+      "PayoutId": {
+        "in": "query",
+        "name": "payout-id",
+        "description": "Payout Id",
+        "schema": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "required": false
+      },
+      "page": {
+        "name": "page",
+        "in": "query",
+        "description": "zero-based page index in list requests.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "required": false
+      },
+      "size": {
+        "name": "size",
+        "in": "query",
+        "description": "the size of the page to be returned in list requests.",
+        "schema": {
+          "type": "integer",
+          "minimum": 10000,
+          "maximum": 10000,
+          "default": 10000
+        },
+        "required": false
+      },
+      "date": {
+        "name": "date",
+        "in": "query",
+        "description": "The date in yyyy-MM-dd format for which the list of payouts should be returned. If not provided, current date in UTC will be used.",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "examples": [
+            "2020-06-18"
+          ]
+        }
+      },
+      "startDate": {
+        "name": "start-date",
+        "in": "query",
+        "description": "The start date (inclusive) in yyyy-MM-dd format for which the list of payments/refunds should be returned. The maximum difference between the start date and end date can be 30 days When the start date is filled the end date needs to be filled as well.",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "examples": [
+            "2020-06-18"
+          ]
+        },
+        "required": false
+      },
+      "endDate": {
+        "name": "end-date",
+        "in": "query",
+        "description": "The end date (inclusive) in yyyy-MM-dd format for which the list of payments/refunds should be returned. The maximum difference between the start date and end date can be 30 days. When the end date is filled the start date needs to be filled as well.",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "examples": [
+            "2020-06-18"
+          ]
+        },
+        "required": false
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "title": "Error response",
+        "description": "The standard response model returned in case of an error",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "AbstractListResponse": {
+        "type": "object",
+        "description": "Base paginated list response",
+        "required": [
+          "size",
+          "totalPages",
+          "totalElements",
+          "number"
+        ],
+        "properties": {
+          "size": {
+            "type": "integer",
+            "description": "the total number of elements in the current page of this response",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "the total number of pages in the response"
+          },
+          "totalElements": {
+            "type": "integer",
+            "description": "the total number of elements in the response"
+          },
+          "number": {
+            "type": "integer",
+            "description": "the current page number"
+          }
+        }
+      },
+      "PayoutListItem": {
+        "type": "object",
+        "description": "an individual object returned in the List response that contains the details of a payout\nassociated to a merchant",
+        "required": [
+          "payoutId",
+          "merchantId",
+          "bulkId",
+          "iban",
+          "payoutStatus",
+          "payoutDate",
+          "payoutCurrency",
+          "totalPayments",
+          "totalRefunds",
+          "totalPaymentAmount",
+          "totalRefundAmount",
+          "payoutAmount"
+        ],
+        "properties": {
+          "payoutId": {
+            "type": "string",
+            "description": "The unique identifier associated with the payout if a pay-out was successfully created",
+            "minLength": 24,
+            "maxLength": 24
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "The merchant id used during aggregation of the payout run",
+            "minLength": 24,
+            "maxLength": 24
+          },
+          "bulkId": {
+            "type": "string",
+            "description": "The bulk id used during aggregation of the of the payout run if available,\nif not `NONE` would be sent as default",
+            "minLength": 1
+          },
+          "iban": {
+            "type": "string",
+            "description": "The IBAN in (ISO 13616) format used during aggregation of the payout run and\nthis will be used to payout to the merchant",
+            "pattern": "^[A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}$",
+            "examples": [
+              "BE68539007547034"
+            ],
+            "minLength": 1
+          },
+          "payoutStatus": {
+            "$ref": "#/components/schemas/PayoutStatus"
+          },
+          "payoutDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "timestamp, when payout was created in UTC"
+          },
+          "payoutCurrency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "totalPayments": {
+            "type": "integer",
+            "description": "The total number of payments included in the payout"
+          },
+          "totalRefunds": {
+            "type": "integer",
+            "description": "The total number of refunds included in the payout"
+          },
+          "totalPaymentAmount": {
+            "description": "The total payment amount in cents contained in the payout.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1
+          },
+          "totalRefundAmount": {
+            "description": "The total refund amount in cents contained in the payout.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "exclusiveMinimum": 0
+          },
+          "payoutAmount": {
+            "type": "integer",
+            "description": "Total amount in cents paid out the to merchant",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1
+          }
+        }
+      },
+      "PayoutListResponse": {
+        "description": "contains a paginated list of payouts associated with a merchant",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AbstractListResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "payouts"
+            ],
+            "properties": {
+              "payouts": {
+                "type": "array",
+                "description": "a list of payouts. If the list is empty, then there were no payouts made.",
+                "items": {
+                  "$ref": "#/components/schemas/PayoutListItem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PayoutPaymentsResponse": {
+        "description": "list of payments associated with a payout",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AbstractListResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "payments"
+            ],
+            "properties": {
+              "payments": {
+                "type": "array",
+                "description": "a list of payments included in the payout.",
+                "items": {
+                  "$ref": "#/components/schemas/PaymentDetails"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PayoutRefundsResponse": {
+        "description": "list of refunds associated with a payout",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AbstractListResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "refunds"
+            ],
+            "properties": {
+              "refunds": {
+                "type": "array",
+                "description": "a list of refunds included in the payout.",
+                "items": {
+                  "$ref": "#/components/schemas/RefundDetails"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PaymentDetails": {
+        "description": "Details of a payment",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TransactionDetails"
+          }
+        ]
+      },
+      "RefundDetails": {
+        "description": "Details of a refund",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TransactionDetails"
+          },
+          {
+            "type": "object",
+            "required": [
+              "refundId"
+            ],
+            "properties": {
+              "refundId": {
+                "type": "string",
+                "description": "The id of the refund",
+                "minLength": 24,
+                "maxLength": 24
+              }
+            }
+          }
+        ]
+      },
+      "TransactionDetails": {
+        "type": "object",
+        "description": "The details of a transaction",
+        "required": [
+          "paymentId",
+          "paymentProfileId",
+          "merchantName",
+          "paymentChannel",
+          "currency",
+          "amount",
+          "transactionDate"
+        ],
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "description": "The id of the payment",
+            "minLength": 24,
+            "maxLength": 24
+          },
+          "payoutId": {
+            "type": "string",
+            "description": "The id of the payout",
+            "minLength": 24,
+            "maxLength": 24
+          },
+          "paymentProfileId": {
+            "type": "string",
+            "description": "The profile id of the merchant used in the transaction",
+            "minLength": 24,
+            "maxLength": 24
+          },
+          "merchantName": {
+            "type": "string",
+            "description": "The name of the merchant",
+            "minLength": 1
+          },
+          "paymentChannel": {
+            "$ref": "#/components/schemas/PaymentChannel"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Total amount in cents of the transaction",
+            "format": "int64",
+            "minimum": 1
+          },
+          "reference": {
+            "description": "The reference provided by the merchant/partner during a payment/refund",
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "description": "The description provided by the merchant/partner during a payment/refund",
+            "type": "string",
+            "minLength": 1
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "timestamp, when transaction was created in UTC"
+          }
+        }
+      },
+      "Currency": {
+        "type": "string",
+        "enum": [
+          "EUR"
+        ],
+        "default": "EUR",
+        "description": "currency code. Only EUR is supported [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)"
+      },
+      "PaymentChannel": {
+        "type": "string",
+        "enum": [
+          "ONLINE",
+          "INSTORE",
+          "INVOICE"
+        ],
+        "description": "\"The  channel of the payment\""
+      },
+      "PayoutStatus": {
+        "type": "string",
+        "enum": [
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "description": "* _SUCCEEDED_ - Payout was successfully processed\n* _FAILED_ - Payout failed."
+      }
+    },
+    "responses": {
+      "400BadRequest": {
+        "description": "Error codes:\n* _BAD_REQUEST_ - some field in the request was not formatted correctly",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/Signature"
+          }
+        }
+      },
+      "401UnauthorizedReconciliation": {
+        "description": "If JWS signature is not valid. Error codes:\n* _UNAUTHORIZED_ - caller doesn't have valid authentication credentials",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/Signature"
+          }
+        }
+      },
+      "403ForbiddenReconciliation": {
+        "description": "Error codes:\n* _ACCESS_DENIED_ - operation not allowed, caller doesn't have required authorities",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/Signature"
+          }
+        }
+      },
+      "500InternalServerErrorReconciliation": {
+        "description": "Error codes:\n* _TECHNICAL_ERROR_ - technical error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/Signature"
+          }
+        }
+      },
+      "503ServiceUnavailable": {
+        "description": "Service is unavailable"
+      }
+    },
+    "headers": {
+      "Signature": {
+        "description": "[Detached JWS signature of response payload](https://tools.ietf.org/html/rfc7797).\nBancontact Payconiq Company hosts the Public Key in [JWK format](https://tools.ietf.org/html/rfc7517) as [JWKS](https://tools.ietf.org/html/rfc7517#section-3) at:\n- https://jwks.bancontact.net/\n- https://jwks.preprod.bancontact.net/\nfor PROD and PREPROD environments respectively.\nMerchants should use the Public key downloaded from this url identified by kid claim in JOSE header.\nBancontact Payconiq Company will use the same algorithm to sign the response as the one used for request signature\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Response Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"[ES256(ECDSA using P-256 and SHA-256. Minimum keysize 256 bit)](https://tools.ietf.org/html/rfc7518#section-3.1)\",\n      \"https://payconiq.com/sub\" : \"{merchantProfileId}\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{X-Request-ID}\",\n      \"https://payconiq.com/path\": \"request path eg. /bag/v1/payments/{payment-id}/authorization/{authorization-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload MUST be same as the response body as base64url encoded JSON data.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

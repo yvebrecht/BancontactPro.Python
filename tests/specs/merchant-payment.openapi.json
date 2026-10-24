@@ -1,0 +1,1665 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Payment V3 API",
+    "version": "3.6.5",
+    "description": "APIs intended to support the merchant/partner's payment flow on creation, cancellation, search and refunds.\n\n## History\n\n### 3.6.5 (2025-08-29)\n\n* No longer returning `REFUND_NOT_ALLOWED` error for products with refundAllowed=false in `getDebtorIban` operation.\n\n### 3.6.4 (2025-08-26)\n\n* Added `JWS-Request-Signature-Payment` for all payment call.\n\n### 3.6.3 (2025-08-22)\n\n* Modified `description` by adding the SEPA requirements allowed character sets.\n* Modified `reference` by adding the SEPA requirements allowed character sets.\n\n### 3.6.2 (2025-07-17)\n\n* Removed totalAmount, tippingAmount, and transferAmount from the Open API, as they are no longer in use.\n* Added examples to provide additional context.\n"
+  },
+  "paths": {
+    "/v3/payments/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Payment details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/get_payment_response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: caller doesn’t have an api-key access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: api-key access token is invalid, creditor it's not a participant of the requested payment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `PAYMENT_NOT_FOUND`: no payment could be found\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**Error Codes**\n"
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**Error Codes**"
+          }
+        },
+        "description": "This API is intended for merchants requiring information on a specific payment. \nOnboarded merchants should have api keys for each profile, the api key will carry the profileId information required to find the correct creditor in the merchant-service\n\nThe token/api-key necessary to call this endpoint must contain:\n\n* `subjectType` : `INTEGRATOR:{CCV_ID}` or `MERCHANT:{ID}`\n* `resource`: `PAYMENTPROFILE:{profileId}`,\n* `authority`: `MERCHANT_PAYMENT`",
+        "operationId": "merchant-get-payment",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 24,
+              "maxLength": 24
+            }
+          }
+        ],
+        "summary": "get a payment by id"
+      },
+      "delete": {
+        "responses": {
+          "204": {
+            "description": "Payment is successfully cancelled"
+          },
+          "401": {
+            "description": "* `UNAUTHORIZED`: user doesn't have an access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "* `ACCESS_DENIED`: access token is invalid\n* `CALLER_NOT_ALLOWED_TO_CANCEL`: if caller is not a participant of the payment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "* `PAYMENT_NOT_FOUND`: payment is not found in the system",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "* `PAYMENT_NOT_PENDING`: payment is not in pending or identify state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**Error Codes**\n"
+          },
+          "500": {
+            "description": "* `TECHNICAL_ERROR`: Technical error in Payment service ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "description": "Endpoint responsible for canceling a payment on the request of a merchant.\nThe caller has to be one of the participants of the payment.\nA payment can be cancelled only if has the status in PENDING or IDENTIFIED.\nWhen a payment is cancelled the status will be set to CANCELLED.\n\nThe token neccessary to call this endpoint as a **merchant** has to have:\n- `subjectType` : `INTEGRATOR` or `MERCHANT`\n- `authority`: `MERCHANT_PAYMENT`\n- `resourceType` : `PAYMENTPROFILE`",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "operationId": "cancel_payment",
+        "summary": "cancel a payment",
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 24,
+              "maxLength": 24
+            }
+          }
+        ]
+      }
+    },
+    "/v3/payments/search": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "List of payments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSearchResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: caller doesn’t have an api-key access token"
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: api-key access token is invalid, creditor it's not a participant of the requested payment"
+          },
+          "429": {
+            "description": "**Error Codes**\n"
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service"
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "description": "Endpoint responsible for searching payments by PaymentWebQuery model and returning the latest n(number set on the 'limit' parameter) payments, starting from the 'offset' payment(set in 'offset' parameter).\nBy default the latest 10 payments (sorted by creation date descending) are returned per request\n",
+        "operationId": "search",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "summary": "search payments",
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "description": "zero-based page index in list requests.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "description": "the size of the page to be returned in list requests.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/payment-search-query"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/payments": {
+      "post": {
+        "responses": {
+          "201": {
+            "description": "Payment has been created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/payment_create_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**Error Codes**\n* `BODY_MISSING`: A json needs to be provided\n* `FIELD_IS_REQUIRED`: Field X is mandatory\n* `FIELD_IS_INVALID`: Field X is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: user doesn’t have an access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: The JWT could not be verified (different format) - The JWT doesn’t contain the required authority to access the resource requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `MERCHANT_PROFILE_NOT_FOUND`: The merchant profile does not exist"
+          },
+          "422": {
+            "description": "**Error Codes**\n* `UNABLE_TO_PAY_CREDITOR`: Variable reason(Depends on automatic processing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**Error Codes**\n"
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**Error Codes**\n* `TRY_AGAIN_LATER`: one of the internal services is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        },
+        "description": "This API is intended for merchants initiating payments for specific profiles.\nOnboarded merchants should have api keys for each profile, the api key will carry the profileId information required to find the correct creditor in the merchant-service\n\nThe token/api-key necessary to call this endpoint must contain:\n* `subjectType` : \"`INTEGRATOR:{CCV_ID}`\" or \"`MERCHANT:{ID}`\"\n* `resource`: \"`PAYMENTPROFILE:{profileId}`\",\n* `authority`: `MERCHANT_PAYMENT`",
+        "summary": "create a payment",
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/payment_create_request"
+              }
+            }
+          }
+        },
+        "operationId": "create",
+        "tags": [
+          "Merchant Endpoints"
+        ]
+      }
+    },
+    "/callback": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "If sync callback is configured (in the merchant profile), Bancontact Company waits a response from the callback endpoint and a return code of 200 informs Bancontact  Company that the merchant accepts this payment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "If sync callback is configured (in the merchant profile), Bancontact Company waits a response from the callback endpoint and an error code of 4xx or 5xx informs Bancontact Company that the merchant rejects this payment and the status of the payment will be set to FAILED.\n\nThis behavior also applies if the merchant callback times out (5 seconds). Bancontact  Company has a retry mechanism so in total Bancontact Company will make 3 calls to confirm the payment with the merchant, in case they time out the payment will  be marked as FAILED"
+          }
+        },
+        "description": "Each merchant needs to define a specific endpoint to their backend (e.g., https://checkout.company.com/webhook/91FA6EEC30844FAAB5). This endpoint will be called by Bancontact Company with details about the payment. This allows the merchant’s backend to process the data (mark the transaction in database, update the product count number, send email to the customer, etc.). Since webhooks are asynchronous, their order is not guaranteed.\n\nThe JSON-formatted POST request contains payment details. Bancontact Company will sign the callback request using a JWS signature (see the specification of the Signature header for more details). In case of no response from the callback endpoint, Bancontact Payconiq Company will call the endpoint again up to three times per payment. The app must verify that:\n\n* Notification messages originated from Bancontact  Company\n* Were not altered or corrupted during transmission\n* Are targeted for you\n* Contain a valid signature.",
+        "operationId": "callback",
+        "tags": [
+          "Callback to Merchants"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Signature",
+            "required": true,
+            "description": "[Detached JWS signature of response payload](https://tools.ietf.org/html/rfc7797).\n\nBancontact  Company hosts the certificates in [JWK format](https://tools.ietf.org/html/rfc7517) at Bancontact  Company hosts the Public Key in JWK format as JWKS at:\n- https://jwks.bancontact.net/\n- https://jwks.preprod.bancontact.net/\nfor PROD and PREPROD environments respectively.\nThe merchant system should download the certificate in JWK format from the URL specified above and verify the certificate thumbprint present in x5t#S256 JOSE header against the downloaded certificate.\n\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"ES256\",\n      \"sub\" : \"{merchantProfileId}\",\n      \"x5t#S256\" : \"[X.509 certificate SHA-256 thumbprint](https://tools.ietf.org/html/rfc7515#section-4.1.8).\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{Unique-request-identifier}\",\n      \"https://payconiq.com/path\": \"request path ex. /v3/payments/{payment-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload will be the same as the request body.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "User-Agent",
+            "required": true,
+            "description": "The User-Agent request header contains a characteristic string that allows the network protocol peers to identify the application type, operating system, software vendor or software version of the requesting software user agent.",
+            "schema": {
+              "type": "string",
+              "default": "Payconiq"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "description": "The Content-Type entity header is used to indicate the media type of the resource.",
+            "schema": {
+              "type": "string",
+              "default": "application/json"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/merchant-callback"
+              }
+            }
+          }
+        },
+        "summary": "notify merchants about statuses changes",
+        "security": [
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ]
+      }
+    },
+    "/v3/payments/{id}/acknowledge": {
+      "post": {
+        "summary": "Merchant acknowledges payment status callback was received",
+        "operationId": "merchant-acknowledge",
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Bancontact  Company Payment Id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 24,
+              "maxLength": 24
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/merchant-acknowledge"
+              }
+            }
+          }
+        },
+        "tags": [
+          "Merchant Acknowledge"
+        ],
+        "responses": {
+          "202": {
+            "description": "The acknowledge request for the specified payment has been processed"
+          },
+          "400": {
+            "description": "**Error Codes**\n* `FIELD_IS_REQUIRED`: Field X is mandatory\n* `FIELD_IS_INVALID`: Field X is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: caller doesn’t have an api-key access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: The JWT could not be verified or doesn’t contain the required authority to access the resource requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `PAYMENT_NOT_FOUND`: no payment could be found for the supplied identifier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "**Error Codes**\n* `PAYMENT_VOIDED`: Payment is already voided",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**Error Codes**\n* `SERVICE_UNAVAILABLE`: Payment service could not be reached or some unexpected error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/payments/{id}/debtor/refundIban": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "The IBAN of the debtor used in the specified payment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/refund-response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: caller doesn’t have an api-key access token"
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: access token is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `PAYMENT_NOT_FOUND`: no payment could be found for the supplied identifier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "**Error Codes**\n* `REFUND_NOT_ALLOWED`: The payment is not in a `SUCCEEDED` state\n* `REFUND_NOT_AVAILABLE`: debtor details are not available yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**Error Codes**\n"
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service"
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "description": "This endpoint returns the debtor IBAN that the merchant can use to transfer the money directly. This process does not handle any money flow with the debtor.\n\nThe token/api-key necessary to call this endpoint must contain:\n* `subjectType` : \"`INTEGRATOR:{CCV_ID}`\" or \"`MERCHANT:{ID}`\"\n* `resource`: \"`PAYMENTPROFILE:{profileId}`\",\n* `authority`: `MERCHANT_REFUND`\n\n- The payment specified should be in the SUCCEEDED state\n- The endpoint can be called multiple times by the Merchant, there's no restriction for that\n",
+        "operationId": "create-refund",
+        "tags": [
+          "Refunds"
+        ],
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "id of the payment for which to get the debtor's IBAN needed to refund",
+            "schema": {
+              "type": "string",
+              "minLength": 24,
+              "maxLength": 24
+            }
+          }
+        ],
+        "summary": "get debtor's refund IBAN"
+      }
+    },
+    "/v3/payments/pos": {
+      "post": {
+        "responses": {
+          "201": {
+            "description": "Payment successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/payment_create_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**Error Codes**\n* `BODY_MISSING`: A json needs to be provided\n* `FIELD_IS_REQUIRED`: Field X is mandatory\n* `FIELD_IS_INVALID`: Field X is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED`: user doesn’t have an access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED`: The JWT could not be verified (different format) - The JWT doesn’t contain the required authority to access the resource requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `MERCHANT_PROFILE_NOT_FOUND`: The merchant profile does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "**Error Codes**\n* `UNABLE_TO_PAY_CREDITOR`: Variable reason(Depends on automatic processing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR`: Technical error in Payment service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**Error Codes**\n* `TRY_AGAIN_LATER`: one of the internal services is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        },
+        "summary": "create static qr payment",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "description": "This API is intended for merchants initiating staticQR payments for specific POS(point of sale). If active payment already exists for provided combination of profileId and posId, then existing payment will be invalidated and new one created.\nOnboarded merchants should have api keys for each profile, the api key will carry the profileId information required to find the correct creditor in the merchant-service\n\nThe token/api-key necessary to call this endpoint must contain:\n* `subjectType` : \"`INTEGRATOR:{CCV_ID}`\" or \"`MERCHANT:{ID}`\"\n* `resource`: \"`PAYMENTPROFILE:{profileId}`\",\n* `authority`: `MERCHANT_PAYMENT`",
+        "security": [
+          {
+            "api_key_payment_profile": []
+          },
+          {
+            "JWS-Request-Signature-Payment": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/static_qr_payment_create_request"
+              }
+            }
+          }
+        },
+        "operationId": "create_static_qr_payment"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Merchant Endpoints"
+    }
+  ],
+  "security": [
+    {
+      "api_key_payment_profile": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://merchant.api.preprod.bancontact.net",
+      "description": "PREPROD merchant API"
+    },
+    {
+      "url": "https://merchant.api.bancontact.net",
+      "description": "PROD merchant API"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "api_key_payment_profile": {
+        "type": "apiKey",
+        "in": "header",
+        "description": "Bearer authentication with API Key generated by API Manager. Used to get/create payments for a specific Merchant Profile or create refunds for a specific payment.",
+        "name": "Authorization"
+      },
+      "JWS-Request-Signature-Payment": {
+        "type": "apiKey",
+        "name": "Signature",
+        "in": "header",
+        "description": "[Detached JWS signature of response payload](https://tools.ietf.org/html/rfc7797).\n\nBancontact  Company hosts the certificates in [JWK format](https://tools.ietf.org/html/rfc7517) as [JWKS](https://tools.ietf.org/html/rfc7517#appendix-B) at :\n- https://jwks.bancontact.net/\n- https://jwks.preprod.bancontact.net/\nfor PROD and PREPROD environments respectively.\n\nThe merchant system should download the certificate in JWK format from the URL specified above.\n\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body))\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"ES256\",\n      \"https://payconiq.com/sub\" : \"{merchantProfileId}\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{Unique-request-identifier}\",\n      \"https://payconiq.com/path\": \"request path ex. /v3/payments/{payment-id}/confirm\"\n      \"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"]\n    }\n\nJWS Payload MUST be the same as response body as base64url encoded JSON data."
+      }
+    },
+    "schemas": {
+      "get_payment_response": {
+        "type": "object",
+        "title": "GetPaymentResponse",
+        "description": "Response containing information on the requested payment.",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "description": "id of the payment",
+            "minLength": 24,
+            "maxLength": 24,
+            "examples": [
+              "5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "the creation time of the payment"
+          },
+          "expireAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "the time from which the payment will be expired"
+          },
+          "succeededAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "if the payment is SUCCEEDED, then this field represents the date-time on which the payment was SUCCEEDED"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/currency"
+          },
+          "status": {
+            "$ref": "#/components/schemas/merchant-payment-status"
+          },
+          "creditor": {
+            "$ref": "#/components/schemas/payment_creditor_response"
+          },
+          "debtor": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "First name of Debtor",
+                "examples": [
+                  "John"
+                ]
+              },
+              "iban": {
+                "type": "string",
+                "description": "IBAN of Debtor masked",
+                "examples": [
+                  "*************12636"
+                ]
+              }
+            }
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Amount in cents originally requested. If no amount was requested by creditor, this will be 0"
+          },
+          "description": {
+            "type": "string",
+            "description": "merchant's description of the payment",
+            "examples": [
+              "5 coke."
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "debtor's message of the payment",
+            "examples": [
+              "Money send."
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference the Bancontact Company payment. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best). in the merchant's system\n",
+            "examples": [
+              "19848995"
+            ]
+          },
+          "bulkId": {
+            "type": "string",
+            "description": "Field used to reference a bulk batch, so the merchant can choose how to bulk the payments. Mandatory if  merchant profile does have bulking enabled, otherwise will miss from the response. If it's not set in the create call it will default to the value configured in the profile if it exists, otherwise its value will be defaulted by the application.",
+            "examples": [
+              "Bulk-1-200"
+            ]
+          },
+          "_links": {
+            "$ref": "#/components/schemas/links"
+          }
+        },
+        "required": [
+          "paymentId",
+          "createdAt",
+          "expireAt",
+          "currency",
+          "status",
+          "creditor",
+          "amount",
+          "totalAmount"
+        ]
+      },
+      "payment_create_request": {
+        "type": "object",
+        "title": "PaymentCreateRequest",
+        "description": "Request to initiate/create a payment as a Merchant",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference the Bancontact Company payment in the merchant's system. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "maxLength": 35,
+            "examples": [
+              "19848995"
+            ]
+          },
+          "bulkId": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "Field used to reference a bulk batch, so the merchant can inform how the payments should be bulked. If it's not set here it will default to the one configured in the profile.",
+            "examples": [
+              "Bulk-1-200"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Amount in cents requested",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1,
+            "maximum": 999999999999
+          },
+          "currency": {
+            "$ref": "#/components/schemas/currency"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the payment that will be shown to the debtor, also used in the bank statement for reconciliation purposes. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "maxLength": 140
+          },
+          "identifyCallbackUrl": {
+            "type": "string",
+            "description": "Callback url to which merchants will be notified about the payment identification. If it's not set here it will default to the one configured in the profile",
+            "pattern": "^https:\\/\\/([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(:\\d+)?(\\/[^\\s]*)?$",
+            "minLength": 1,
+            "maxLength": 2048,
+            "examples": [
+              "https://api.merchant.bancontact.net/identify"
+            ]
+          },
+          "callbackUrl": {
+            "type": "string",
+            "description": "callbackUrl to which the merchant will be notified about the payment payout. If it's not set here it will default to the one set in the profile",
+            "pattern": "^https:\\/\\/([a-zA-Z0-9-:]+\\.)+[a-zA-Z]{2,}(:\\d+)?(\\/[^\\s]*)?$",
+            "minLength": 1,
+            "maxLength": 2048,
+            "examples": [
+              "https://api.merchant.bancontact.net/payment"
+            ]
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "Merchant return url to which the dynamic payment page will redirect after the payment is completed",
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^https:\\/\\/([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(:\\d+)?(\\/[^\\s]*)?$",
+            "examples": [
+              "https://api.merchant.bancontact.net/payment"
+            ]
+          },
+          "voucherEligibility": {
+            "deprecated": true,
+            "type": "array",
+            "description": "List of Value Added Services (vouchers) eligible amounts within the payment",
+            "items": {
+              "$ref": "#/components/schemas/VoucherEligibleAmount"
+            }
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "payment_create_response": {
+        "type": "object",
+        "title": "PaymentCreateResponse",
+        "description": "Object returned if the payment gets successfully created",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "description": "Payment ID",
+            "minLength": 24,
+            "maxLength": 24,
+            "examples": [
+              "5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING"
+            ],
+            "description": "the status of the payment created"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "the creation time of the payment"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "the time from which the payment will be expired"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the payment that will be shown to the debtor, also used in the bank statement for reconciliation purposes. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best). Only first 35 characters will be used for the remittance info\n"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference the Bancontact Company payment in the merchant's system. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "examples": [
+              "19848995"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1,
+            "maximum": 999999999999,
+            "description": "Amount in cents requested"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/currency"
+          },
+          "creditor": {
+            "$ref": "#/components/schemas/payment_creditor_response"
+          },
+          "_links": {
+            "$ref": "#/components/schemas/links"
+          }
+        },
+        "required": [
+          "paymentId",
+          "status",
+          "createdAt",
+          "expiresAt",
+          "amount",
+          "currency",
+          "creditor",
+          "_links"
+        ]
+      },
+      "merchant-acknowledge": {
+        "type": "object",
+        "title": "MerchantAcknowledge",
+        "properties": {
+          "currency": {
+            "$ref": "#/components/schemas/currency"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/payment_amount"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference the Bancontact Company payment in the merchant’s system. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "examples": [
+              "19848995"
+            ]
+          }
+        },
+        "required": [
+          "currency",
+          "amount"
+        ]
+      },
+      "merchant-callback": {
+        "type": "object",
+        "title": "MerchantCallback",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "description": "Bancontact Company Payment ID",
+            "minLength": 24,
+            "maxLength": 24,
+            "examples": [
+              "5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "default": "EUR",
+            "description": "Only EUR is supported currently"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Requested amount in cents",
+            "format": "int64"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the payment that will be shown to the debtor, also used in the bank statement for reconciliation purposes. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference the Bancontact Company payment in the merchant’s system. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "examples": [
+              "19848995"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the payment was created"
+          },
+          "expireAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the payment is going to expire. After that date the payment can't be confirmed anymore"
+          },
+          "succeededAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "if the payment is SUCCEEDED, then this field represents the date-time on which the payment was SUCCEEDED"
+          },
+          "status": {
+            "$ref": "#/components/schemas/merchant-payment-status"
+          },
+          "debtor": {
+            "type": "object",
+            "description": "Customer that paid",
+            "required": [
+              "iban"
+            ],
+            "properties": {
+              "iban": {
+                "type": "string",
+                "description": "Debtor's IBAN masked",
+                "examples": [
+                  "*************12636"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "description": "Debtor's first name",
+                "examples": [
+                  "John"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "paymentId",
+          "totalAmount",
+          "currency",
+          "amount",
+          "createdAt",
+          "status",
+          "debtor"
+        ]
+      },
+      "payment_stage": {
+        "type": "string",
+        "title": "PaymentStage",
+        "enum": [
+          "AUTHORIZE",
+          "CAPTURE",
+          "COMPLETED",
+          "IDENTIFY",
+          "ACCEPT",
+          "NOTIFY",
+          "INITIALIZED",
+          "SOLVENCY",
+          "CANCEL",
+          "CREATE",
+          "CONFIRM",
+          "RISK_ACTIONS"
+        ],
+        "description": "Payment stage"
+      },
+      "payment_type": {
+        "type": "string",
+        "title": "PaymentType",
+        "description": "Payment type",
+        "enum": [
+          "P2P",
+          "DIRECT_PAY",
+          "DYNAMIC",
+          "STATIC",
+          "TEMPLATE",
+          "UNKNOWN",
+          "SCAN_PAY",
+          "PAYMENT_REQUEST"
+        ]
+      },
+      "error": {
+        "type": "object",
+        "description": "error response received from server",
+        "title": "ErrorResponse",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": ""
+          },
+          "message": {
+            "type": "string",
+            "description": ""
+          },
+          "traceId": {
+            "type": "string",
+            "description": "id that is assigned to a single request, job, or action"
+          },
+          "spanId": {
+            "type": "string",
+            "description": "id of the work unit where the error occured"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "traceId",
+          "spanId"
+        ]
+      },
+      "payment-search-query": {
+        "type": "object",
+        "title": "PaymentSearchQuery",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "default is today - 1day (yesterday)"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "paymentStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/merchant-payment-status"
+            }
+          },
+          "reference": {
+            "type": "string",
+            "description": "Merchant payment reference, used to reference Bancontact Company payment in merchant system. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+            "examples": [
+              "19848995"
+            ]
+          }
+        }
+      },
+      "PaymentSearchResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AbstractListResponsePayment"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/get_payment_response"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AbstractListResponsePayment": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Size of the elements returned in current page"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Total number of pages in the backend for the list requested"
+          },
+          "totalElements": {
+            "type": "integer",
+            "description": "Total number of elements in the list requested\n"
+          },
+          "number": {
+            "type": "integer",
+            "description": "Current page number"
+          }
+        },
+        "required": [
+          "size",
+          "totalPages",
+          "totalElements",
+          "number"
+        ]
+      },
+      "refund-response": {
+        "type": "object",
+        "title": "RefundResponse",
+        "properties": {
+          "iban": {
+            "type": "string",
+            "description": "Debtor's IBAN",
+            "examples": [
+              "BE12 3456 7890 1234"
+            ]
+          }
+        },
+        "required": [
+          "iban"
+        ]
+      },
+      "merchant-payment-status": {
+        "type": "string",
+        "title": "MerchantPaymentStatus",
+        "description": "| Status | Description |\n|--------|-------------|\n| PENDING | The merchant has created the payment and and is pending to proceed with identify step. |\n| IDENTIFIED | The user has scanned the payment's QR code with the Bancontact Pay. |\n| AUTHORIZED | The user has confirmed the payment and the bank authorized it. |\n| AUTHORIZATION_FAILED | The authorization with the bank failed. |\n| FAILED | Something went wrong during the payment process(e.g authorization failed). |\n| SUCCEEDED | The payment has succeeded. |\n| CANCELLED | When the payment has been canceled after the user has scanned it, or the merchant has cancelled the payment.|\n| EXPIRED | The payment has expired. |\n| PENDING_MERCHANT_ACKNOWLEDGEMENT | The payment is waiting for the merchant to acknowledge. |\n| VOIDED | The payment has been voided |\n",
+        "enum": [
+          "PENDING",
+          "IDENTIFIED",
+          "AUTHORIZED",
+          "AUTHORIZATION_FAILED",
+          "SUCCEEDED",
+          "FAILED",
+          "CANCELLED",
+          "EXPIRED",
+          "PENDING_MERCHANT_ACKNOWLEDGEMENT",
+          "VOIDED"
+        ]
+      },
+      "currency": {
+        "type": "string",
+        "title": "Currency",
+        "description": "Currency code. Only EUR is supported [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)",
+        "enum": [
+          "EUR"
+        ],
+        "default": "EUR"
+      },
+      "payment_creditor_response": {
+        "type": "object",
+        "title": "PaymentCreditorResponse",
+        "description": "Creditor account set to receive the payment",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The configuration ID of the Merchant",
+            "examples": [
+              "07e998f9-d932-4848-8b60-d5b5ae94b1b2"
+            ]
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "the Id of the merchant",
+            "examples": [
+              "dee718bb-3b6d-4312-9404-3d63d14529cc"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Merchant's company name that will be shown to the debtor",
+            "examples": [
+              "John"
+            ]
+          },
+          "iban": {
+            "type": "string",
+            "description": "Creditor's Bank Account Iban to where the money will be sent to for this current payment",
+            "examples": [
+              "BE12 3456 7890 1234"
+            ]
+          },
+          "identifyCallbackUrl": {
+            "type": "string",
+            "description": "callbackUrl to which the merchant will be notified about the payment identification",
+            "examples": [
+              "https://api.merchant.bancontact.net/identify"
+            ]
+          },
+          "callbackUrl": {
+            "type": "string",
+            "description": "callbackUrl to which the merchant will be notified about the payment payout",
+            "examples": [
+              "https://api.merchant.bancontact.net/payment"
+            ]
+          }
+        }
+      },
+      "links": {
+        "type": "object",
+        "title": "Links",
+        "description": "Provides information to navigate to our REST interfaces dynamically, by including hypermedia links to them. Note that for some links inclusion depends on the status of the payment (e.g. cancel link will be available on PENDING and refund on SUCCEEDED)",
+        "properties": {
+          "self": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://api.merchant.bancontact.net/5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "deeplink": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://payconiq.com/pay/2/5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "qrcode": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://qrcodegenerator.api.bancontact.net/qrcode?c=https%3A%2F%2Fpayconiq.com%2Fpay%2F2%2F5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "cancel": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://api.merchant.bancontact.net/5f91483d-78a7-4914-bc6f="
+            ]
+          },
+          "refund": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://merchant.api.bancontact.net/payments/5f91483d-78a7-4914-bc6f=/refunds"
+            ]
+          },
+          "checkout": {
+            "$ref": "#/components/schemas/link",
+            "examples": [
+              "https://checkout.example.com?paymentId=12345&timestamp=1700000000000&token=abcdef1234567890"
+            ]
+          }
+        },
+        "required": [
+          "self",
+          "deeplink",
+          "qrcode"
+        ]
+      },
+      "link": {
+        "type": "object",
+        "title": "Link",
+        "properties": {
+          "href": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "href"
+        ]
+      },
+      "static_qr_payment_create_request": {
+        "type": "object",
+        "title": "StaticQRPaymentCreateRequest",
+        "description": "Request to initiate/create a static qr payment as a Merchant",
+        "properties": {
+          "reference": {
+            "$ref": "#/components/schemas/payment_reference"
+          },
+          "bulkId": {
+            "$ref": "#/components/schemas/bulkId"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Amount in cents requested",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1,
+            "maximum": 999999999999
+          },
+          "currency": {
+            "$ref": "#/components/schemas/currency"
+          },
+          "description": {
+            "$ref": "#/components/schemas/payment_description"
+          },
+          "posId": {
+            "$ref": "#/components/schemas/posId"
+          },
+          "shopId": {
+            "$ref": "#/components/schemas/shopId"
+          },
+          "shopName": {
+            "type": "string",
+            "description": "Name of the shop, where payment is created. This name will be shown to the user during payment, but will be truncated in the remittance info, if longer than 23 characters.",
+            "examples": [
+              "Bun café"
+            ],
+            "maxLength": 36
+          },
+          "identifyCallbackUrl": {
+            "type": "string",
+            "description": "Callback url to which merchants will be notified about the payment identification. If it's not set here it will default to the one configured in the profile",
+            "minLength": 1,
+            "maxLength": 2048,
+            "examples": [
+              "https://api.merchant.bancontact.net/identify"
+            ]
+          },
+          "callbackUrl": {
+            "type": "string",
+            "description": "Callback url to which the merchant will be notified about the payment payout/cancel. If it's not set here it will default to the one set in the profile",
+            "minLength": 1,
+            "maxLength": 2048,
+            "examples": [
+              "https://api.merchant.bancontact.net/payment"
+            ]
+          },
+          "voucherEligibility": {
+            "deprecated": true,
+            "type": "array",
+            "description": "List of Value Added Services (vouchers) eligible amounts within the payment",
+            "items": {
+              "$ref": "#/components/schemas/VoucherEligibleAmount"
+            }
+          }
+        },
+        "required": [
+          "amount",
+          "posId"
+        ]
+      },
+      "payment_reference": {
+        "type": "string",
+        "description": "Partner payment reference, used to reference the Bancontact Company payment in the partner's system",
+        "maxLength": 35,
+        "examples": [
+          "19848995"
+        ]
+      },
+      "bulkId": {
+        "type": "string",
+        "maxLength": 35,
+        "description": "Field used to reference a bulk batch, so the merchant can inform how the payments should be bulked. If it's not set here it will default to the one configured in the profile.",
+        "examples": [
+          "Bulk-1-200"
+        ]
+      },
+      "payment_description": {
+        "type": "string",
+        "description": "Description of the payment that will be shown to the debtor, also used in the bank statement for reconciliation purposes. The characters used must comply with the [SEPA Requirements for an Extended Character Set (UNICODE Subset) - Best Practices | European Payments Council](https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/sepa-requirements-extended-character-set-unicode-subset-best).\n",
+        "maxLength": 140
+      },
+      "posId": {
+        "type": "string",
+        "description": "Merchant's point of sale identifier",
+        "maxLength": 36,
+        "pattern": "^[A-Za-z0-9]+$",
+        "examples": [
+          "POS00001"
+        ]
+      },
+      "shopId": {
+        "type": "string",
+        "description": "Id of the shop, where payment is created",
+        "maxLength": 36,
+        "examples": [
+          "3418e946-ef71-41ef-ad56-c41421c1e079"
+        ]
+      },
+      "payment_amount": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1,
+        "exclusiveMinimum": 1,
+        "maximum": 999999999999,
+        "description": "Amount in cents requested"
+      },
+      "payment_id": {
+        "type": "string",
+        "description": "Payment ID",
+        "minLength": 24,
+        "maxLength": 24,
+        "examples": [
+          "5f91483d-78a7-4914-bc6f="
+        ]
+      },
+      "merchantId": {
+        "type": "string",
+        "description": "the Id of the merchant",
+        "examples": [
+          "6ce074ed-d10d-403d-9267-f08c5257922c"
+        ]
+      },
+      "profileId": {
+        "type": "string",
+        "description": "The payment profile id of the merchant",
+        "examples": [
+          "8f4a3773-fb65-4f7f-b0fe-c30c6294f73c"
+        ]
+      },
+      "country": {
+        "type": "string",
+        "description": "The ISO Alpha-3 country code where the payment takes place. See https://www.iso.org/obp/ui/#search/code/.",
+        "enum": [
+          "LUX",
+          "NLD",
+          "BEL"
+        ]
+      },
+      "VoucherEligibleAmount": {
+        "type": "object",
+        "description": "Defines an amount could be payed with proper voucher schemes",
+        "required": [
+          "voucherSchemes",
+          "amount"
+        ],
+        "properties": {
+          "voucherSchemes": {
+            "type": "array",
+            "description": "List of voucher schemes could be used to pay the amount",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/VoucherScheme"
+            }
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Amount in cents eligible for payment with voucher. EUR 10.13 will be 1013",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1,
+            "maximum": 999999999999,
+            "examples": [
+              1013
+            ]
+          }
+        }
+      },
+      "VoucherAmount": {
+        "type": "object",
+        "description": "Defines an amount that was payed with voucher scheme",
+        "required": [
+          "voucherProvider",
+          "voucherScheme",
+          "amount"
+        ],
+        "properties": {
+          "voucherProvider": {
+            "$ref": "#/components/schemas/VoucherProvider"
+          },
+          "voucherScheme": {
+            "$ref": "#/components/schemas/VoucherScheme"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Amount in cents was that payed with voucher. EUR 10.13 will be 1013",
+            "format": "int64",
+            "minimum": 1,
+            "exclusiveMinimum": 1,
+            "maximum": 999999999999,
+            "examples": [
+              1013
+            ]
+          }
+        }
+      },
+      "VoucherProvider": {
+        "type": "string",
+        "description": "Provider of the Value Added Service (vouchers), has the form [alpha-3-country-code]_[identifier]\ncurrently known values:\n  - BEL_MONIZZE\n  - BEL_SODEXO\n  - BEL_EDENRED\n",
+        "examples": [
+          "BEL_MONIZZE"
+        ],
+        "minLength": 1,
+        "maxLength": 36,
+        "pattern": "^[A-Z]{3}_[A-Z_]+$"
+      },
+      "VoucherScheme": {
+        "type": "string",
+        "description": "Voucher scheme (voucher type), has the form [alpha-3-country-code]_[identifier]\ncurrently known values:\n  - BEL_MEAL_VOUCHER\n  - BEL_ECO_VOUCHER\n  - BEL_GIFT_VOUCHER\n  - BEL_COVID_VOUCHER\n  - BEL_SPORT_VOUCHER\n  - BEL_CONSUMPTION_VOUCHER\n\nThe api should allow for new schemes, providers and categories without having to upgrade all the services/apps\nusing this API. Because most services will use the java api artifact for this (which will 'close' any enums\ndefined in an openapi spec), the values above are not encoded explicitly as enums.\nThe 400 error response will report any invalid values for the scheme and providers.\n",
+        "examples": [
+          "BEL_MEAL_VOUCHER"
+        ],
+        "minLength": 1,
+        "maxLength": 36,
+        "pattern": "^[A-Z]{3}_[A-Z_]+$"
+      }
+    }
+  }
+}

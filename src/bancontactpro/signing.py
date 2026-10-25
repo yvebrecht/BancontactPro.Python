@@ -16,6 +16,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -65,6 +66,21 @@ def _parse_iat(value: str) -> datetime | None:
 
 def compute_signing_input(encoded_header: str, body: bytes) -> bytes:
     return f"{encoded_header}.{b64url_encode(body)}".encode("ascii")
+
+
+def _signed_path_matches(claim: str, path: str) -> bool:
+    """Whether the signed ``path`` claim names the endpoint that received the callback.
+
+    The docs call the claim a path, but Bancontact signs the callback URL the merchant registered (observed on a real
+    preprod callback: ``https://host/bancontact/callback``), so a claim that is an absolute http(s) URL matches when its
+    path equals the received path. A plain path is compared as it is. The host is not compared: an application behind a
+    proxy cannot rely on the host it sees, and the path is what stops a callback for one endpoint being replayed to
+    another.
+    """
+    if claim == path:
+        return True
+    parts = urlsplit(claim)
+    return parts.scheme in ("http", "https") and bool(parts.netloc) and parts.path == path
 
 
 def try_split(detached_jws: str) -> tuple[str, str] | None:
@@ -166,7 +182,7 @@ class BancontactSignatureVerifier:
             return None
 
         # Defends against a validly signed message being replayed against the wrong route.
-        if claimed_path != path:
+        if not _signed_path_matches(claimed_path, path):
             return None
 
         try:

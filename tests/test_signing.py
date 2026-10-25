@@ -1,5 +1,6 @@
 import base64
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -75,6 +76,43 @@ async def test_verifier_rejects_wrong_path_unknown_kid_and_wrong_key(ec_key):
     assert await BancontactSignatureVerifier(FakeJwks()).verify(jws, b"body", "/callback") is None
     other = ec.generate_private_key(ec.SECP256R1()).public_key()
     assert await BancontactSignatureVerifier(FakeJwks(**{"kid-1": other})).verify(jws, b"body", "/callback") is None
+
+
+@pytest.mark.parametrize(
+    ("claim", "received", "expected"),
+    [
+        ("https://shop.example/callback", "/callback", True),
+        ("http://shop.example/callback", "/callback", True),
+        ("https://shop.example/other", "/callback", False),
+        ("ftp://shop.example/callback", "/callback", False),
+        ("/callback", "/callback", True),
+    ],
+)
+async def test_path_claim_may_be_the_callback_url(ec_key, claim, received, expected):
+    jws = sign(replace(HEADER, path=claim), b"body", ec_key)
+    verifier = BancontactSignatureVerifier(FakeJwks(**{"kid-1": ec_key.public_key()}))
+    assert (await verifier.verify(jws, b"body", received) is not None) is expected
+
+
+async def test_real_preprod_callback_verifies():
+    # Captured from Bancontact's preprod on 2026-10-24 and checked with the public key of https://jwks.preprod.bancontact.net/ :
+    # header..signature, a path claim that is the callback URL, signing input header + "." + base64url(body).
+    public_key = jwk_to_public_key(
+        {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "QXagknFz-0HTQGL-jISbuOdPFP4561SmbmHm2y14HEg",
+            "y": "0XJYHdztagEf-qFj1_lnE1HAqp5LkMDskW4hbhnKiII",
+        }
+    )
+    signature = "eyJjcml0IjpbImh0dHBzOi8vcGF5Y29uaXEuY29tL2lzcyIsImh0dHBzOi8vcGF5Y29uaXEuY29tL2lhdCIsImh0dHBzOi8vcGF5Y29uaXEuY29tL3N1YiIsImh0dHBzOi8vcGF5Y29uaXEuY29tL3BhdGgiLCJodHRwczovL3BheWNvbmlxLmNvbS9qdGkiXSwiaHR0cHM6Ly9wYXljb25pcS5jb20vaXNzIjoiUGF5Y29uaXEiLCJraWQiOiJjMzBmNDE0ZC04NTVmLTQ3OTEtOTc1ZC1mNmQ5ZjNkMjNlNDIiLCJodHRwczovL3BheWNvbmlxLmNvbS9pYXQiOiIyMDI2LTEwLTI0VDIyOjI1OjIzLjE4NVoiLCJ0eXAiOiJKT1NFK0pTT04iLCJodHRwczovL3BheWNvbmlxLmNvbS9zdWIiOiI3eGt5ZGpiYzluZ2dzeWtjZzVzaDBhYnMiLCJodHRwczovL3BheWNvbmlxLmNvbS9wYXRoIjoiaHR0cHM6Ly9iYW5jb250YWN0LXByZXByb2Qub3MtbGFuLmJlL2JhbmNvbnRhY3QvY2FsbGJhY2siLCJodHRwczovL3BheWNvbmlxLmNvbS9qdGkiOiI4MTM4OWVhNS1lZDRlLTQyZTMtODkwYy0xNjExMjkyZWNiOTYiLCJhbGciOiJFUzI1NiJ9..rqZVQYddn67bBOG7iej3jAYwMpT-6R3mI_Ar7npJwHfYLd8iGmKw62on21guVo9XGveBJBd8ApVGPTcZSr78Hg"
+    body = b'{"paymentId":"tx668ldrz9fgg4ararakc62r","currency":"EUR","amount":100,"createdAt":"2026-10-24T22:08:10.040086Z","status":"SUCCEEDED","debtor":{"iban":"************7034","name":"Axel Dewaele"},"description":"sample payment","expireAt":"2026-10-24T22:10:10.040086Z","succeededAt":"2026-10-24T22:08:28.514776Z"}'
+    claims = await BancontactSignatureVerifier(FakeJwks(**{"c30f414d-855f-4791-975d-f6d9f3d23e42": public_key})).verify(
+        signature, body, "/bancontact/callback"
+    )
+    assert claims is not None
+    assert claims.issuer == "Payconiq"
+    assert claims.request_id == "81389ea5-ed4e-42e3-890c-1611292ecb96"
 
 
 async def test_verifier_rejects_unrecognised_critical_extension(ec_key):

@@ -4,7 +4,7 @@
 
 Een async Python-client voor de [Bancontact Pro](https://docs.bancontactpro.com/)-API's: Payment, Refund en Reconciliation, met request-signing, verificatie van callbacks via JWKS en QR-/deeplinkgeneratie.
 
-> **Status: in ontwikkeling, nog niet gepubliceerd en nog niet getest tegen Bancontact zelf.** Alles is getest met gemockte HTTP. Het pakket staat nog niet op PyPI en de naam `bancontactpro` is nog niet gereserveerd. De bibliotheek is gebouwd op de documentatie en specs van Bancontact, niet als port van een andere taalversie.
+> **Status: in ontwikkeling, nog niet gepubliceerd en maar gedeeltelijk getest tegen Bancontact.** Alles is getest met gemockte HTTP. De verificatie van callbacks is daarnaast getest met een echte callback van Bancontacts preprod (opgeslagen als testvector en gecontroleerd met hun publieke sleutel). Betalingen aanmaken en de andere aanroepen zijn in deze taal nog niet tegen Bancontact geprobeerd; in BancontactPro.Net wel (een betaling aanmaken en lezen). Het pakket staat nog niet op PyPI en de naam `bancontactpro` is nog niet gereserveerd. De bibliotheek is gebouwd op de documentatie en specs van Bancontact, niet als port van een andere taalversie.
 
 ## Vereisten
 
@@ -58,6 +58,15 @@ else:
 ```
 
 Antwoord pas met `200` na verificatie en verwerking. Bancontact herhaalt callbacks met identieke inhoud, dus verwerk idempotent (zie ook BancontactPro.Net#9).
+
+**Wat Bancontact echt stuurt** (gecontroleerd op preprod, 2026-10-24):
+
+- de `Signature`-header is `header..signature`, met twee punten (de verifier accepteert ook één punt);
+- het `path`-claim is de **geregistreerde callback-URL**, niet alleen een pad: de verifier vergelijkt het pad van die URL met het pad dat je meegeeft en laat de host buiten beschouwing;
+- de handtekening loopt over `base64url(header) + "." + base64url(body)`, met de body zoals ontvangen;
+- Bancontact moet de URL via openbaar HTTPS bereiken. Zet er geen login, pad-herschrijving of bodywijziging voor. Bij een weigering (401) probeert Bancontact opnieuw, in bursts van vier.
+
+Probeer het met de [sample en haar opzetgids](https://github.com/yvebrecht/BancontactPro.SDK.Samples.Python/blob/main/docs/setting-up-the-samples.md): het debugpaneel toont de ruwe body en een analyse van de header.
 
 ## Terugbetalingen en reconciliatie
 
